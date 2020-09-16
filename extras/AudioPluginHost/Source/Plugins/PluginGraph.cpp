@@ -398,7 +398,7 @@ void PluginGraph::createNodeFromXml (const XmlElement& xml)
             instance->setBusesLayout (layout);
         }
 
-        if (auto node = graph.addNode (std::move (instance), NodeID ((uint32) xml.getIntAttribute ("uid"))))
+        if (auto node = graph.addNode (std::move (instance), false, NodeID ((uint32) xml.getIntAttribute ("uid"))))
         {
             if (auto* state = xml.getChildByName ("STATE"))
             {

@@ -264,7 +264,7 @@ private:
             auto& params = audioProcessor->getParameters();
 
             for (auto p : params)
-            {
+            { 
                 if (auto* param = dynamic_cast<AudioProcessorParameterWithID*> (p))
                 {
                     if (param->paramID == paramId)
