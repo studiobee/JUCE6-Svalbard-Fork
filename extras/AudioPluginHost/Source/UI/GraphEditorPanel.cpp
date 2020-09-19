@@ -2,16 +2,17 @@
   ==============================================================================
 
    This file is part of the JUCE library.
-   Copyright (c) 2020 - Raw Material Software Limited
+   Copyright (c) 2017 - ROLI Ltd.
 
    JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By using JUCE, you agree to the terms of both the JUCE 6 End-User License
-   Agreement and JUCE Privacy Policy (both effective as of the 16th June 2020).
+   By using JUCE, you agree to the terms of both the JUCE 5 End-User License
+   Agreement and JUCE 5 Privacy Policy (both updated and effective as of the
+   27th April 2017).
 
-   End User License Agreement: www.juce.com/juce-6-licence
-   Privacy Policy: www.juce.com/juce-privacy-policy
+   End User License Agreement: www.juce.com/juce-5-licence
+   Privacy Policy: www.juce.com/juce-5-privacy-policy
 
    Or: You may also use this code under the terms of the GPL v3 (see
    www.gnu.org/licenses).
@@ -23,7 +24,7 @@
   ==============================================================================
 */
 
-#include <JuceHeader.h>
+#include "../JuceLibraryCode/JuceHeader.h"
 #include "GraphEditorPanel.h"
 #include "../Plugins/InternalPlugins.h"
 #include "MainHostWindow.h"
@@ -139,7 +140,7 @@ struct GraphEditorPanel::PinComponent   : public Component,
 
         auto colour = (pin.isMIDI() ? Colours::red : Colours::green);
 
-        g.setColour (colour.withRotatedHue ((float) busIdx / 5.0f));
+        g.setColour (colour.withRotatedHue (busIdx / 5.0f));
         g.fillPath (p);
     }
 
@@ -441,14 +442,12 @@ struct GraphEditorPanel::PluginComponent   : public Component,
             case 10:  showWindow (PluginWindow::Type::normal); break;
             case 11:  showWindow (PluginWindow::Type::programs); break;
             case 12:  showWindow (PluginWindow::Type::generic)  ; break;
-           #if JUCE_WINDOWS && JUCE_WIN_PER_MONITOR_DPI_AWARE
             case 13:
             {
                 if (auto* node = graph.graph.getNodeForId (pluginID))
                     node->properties.set ("DPIAware", ! node->properties ["DPIAware"]);
                 break;
             }
-           #endif
             case 14:  showWindow (PluginWindow::Type::debug); break;
             case 20:  showWindow (PluginWindow::Type::audioIO); break;
             case 21:  testStateSaveLoad(); break;
@@ -509,8 +508,7 @@ struct GraphEditorPanel::PluginComponent   : public Component,
 struct GraphEditorPanel::ConnectorComponent   : public Component,
                                                 public SettableTooltipClient
 {
-    explicit ConnectorComponent (GraphEditorPanel& p)
-        : panel (p), graph (p.graph)
+    ConnectorComponent (GraphEditorPanel& p) : panel (p), graph (p.graph)
     {
         setAlwaysOnTop (true);
     }
@@ -963,7 +961,7 @@ struct GraphDocumentComponent::TooltipBar   : public Component,
 
     void paint (Graphics& g) override
     {
-        g.setFont (Font ((float) getHeight() * 0.7f, Font::bold));
+        g.setFont (Font (getHeight() * 0.7f, Font::bold));
         g.setColour (Colours::black);
         g.drawFittedText (tip, 10, 0, getWidth() - 12, getHeight(), Justification::centredLeft, 1);
     }
@@ -994,7 +992,7 @@ class GraphDocumentComponent::TitleBarComponent    : public Component,
                                                      private Button::Listener
 {
 public:
-    explicit TitleBarComponent (GraphDocumentComponent& graphDocumentComponent)
+    TitleBarComponent (GraphDocumentComponent& graphDocumentComponent)
         : owner (graphDocumentComponent)
     {
         static const unsigned char burgerMenuPathData[]
@@ -1167,21 +1165,19 @@ GraphDocumentComponent::GraphDocumentComponent (AudioPluginFormatManager& fm,
     deviceManager.addChangeListener (graphPanel.get());
     deviceManager.addAudioCallback (&graphPlayer);
     deviceManager.addMidiInputDeviceCallback ({}, &graphPlayer.getMidiMessageCollector());
-    deviceManager.addChangeListener (this);
+    changeListenerCallback(&deviceManager);
 }
 
 void GraphDocumentComponent::init()
 {
-    updateMidiOutput();
-
     graphPanel.reset (new GraphEditorPanel (*graph));
     addAndMakeVisible (graphPanel.get());
     graphPlayer.setProcessor (&graph->graph);
 
-    keyState.addListener (&graphPlayer.getMidiMessageCollector());
+    //keyState.addListener (&graphPlayer.getMidiMessageCollector());
 
-    keyboardComp.reset (new MidiKeyboardComponent (keyState, MidiKeyboardComponent::horizontalKeyboard));
-    addAndMakeVisible (keyboardComp.get());
+    //keyboardComp.reset (new MidiKeyboardComponent (keyState, MidiKeyboardComponent::horizontalKeyboard));
+    //addAndMakeVisible (keyboardComp.get());
     statusBar.reset (new TooltipBar());
     addAndMakeVisible (statusBar.get());
 
@@ -1216,12 +1212,12 @@ void GraphDocumentComponent::init()
 
 GraphDocumentComponent::~GraphDocumentComponent()
 {
-    if (midiOutput != nullptr)
-        midiOutput->stopBackgroundThread();
-
     releaseGraph();
 
     keyState.removeListener (&graphPlayer.getMidiMessageCollector());
+    if (midiOut)
+       midiOut->stopBackgroundThread();
+
 }
 
 void GraphDocumentComponent::resized()
@@ -1234,7 +1230,7 @@ void GraphDocumentComponent::resized()
     if (isOnTouchDevice())
         titleBarComponent->setBounds (r.removeFromTop(titleBarHeight));
 
-    keyboardComp->setBounds (r.removeFromBottom (keysHeight));
+    //keyboardComp->setBounds (r.removeFromBottom (keysHeight));
     statusBar->setBounds (r.removeFromBottom (statusHeight));
     graphPanel->setBounds (r);
 
@@ -1246,10 +1242,10 @@ void GraphDocumentComponent::createNewPlugin (const PluginDescription& desc, Poi
     graphPanel->createNewPlugin (desc, pos);
 }
 
-void GraphDocumentComponent::unfocusKeyboardComponent()
-{
-    keyboardComp->unfocusAllComponents();
-}
+//void GraphDocumentComponent::unfocusKeyboardComponent()
+//{
+//    keyboardComp->unfocusAllComponents();
+//}
 
 void GraphDocumentComponent::releaseGraph()
 {
@@ -1262,7 +1258,7 @@ void GraphDocumentComponent::releaseGraph()
         graphPanel = nullptr;
     }
 
-    keyboardComp = nullptr;
+   // keyboardComp = nullptr;
     statusBar = nullptr;
 
     graphPlayer.setProcessor (nullptr);
@@ -1333,22 +1329,15 @@ bool GraphDocumentComponent::closeAnyOpenPluginWindows()
     return graphPanel->graph.closeAnyOpenPluginWindows();
 }
 
-void GraphDocumentComponent::changeListenerCallback (ChangeBroadcaster*)
+void GraphDocumentComponent::changeListenerCallback(ChangeBroadcaster* source)
 {
-    updateMidiOutput();
-}
+   if (source == &deviceManager)
+   {
+      midiOut = deviceManager.getDefaultMidiOutput();
 
-void GraphDocumentComponent::updateMidiOutput()
-{
-    auto* defaultMidiOutput = deviceManager.getDefaultMidiOutput();
-
-    if (midiOutput != defaultMidiOutput)
-    {
-        midiOutput = defaultMidiOutput;
-
-        if (midiOutput != nullptr)
-            midiOutput->startBackgroundThread();
-
-        graphPlayer.setMidiOutput (midiOutput);
-    }
+      if (midiOut)
+         midiOut->startBackgroundThread();
+      //else stop?
+      graphPlayer.setMidiOutput(midiOut);
+   }
 }

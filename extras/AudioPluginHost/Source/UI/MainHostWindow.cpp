@@ -2,16 +2,17 @@
   ==============================================================================
 
    This file is part of the JUCE library.
-   Copyright (c) 2020 - Raw Material Software Limited
+   Copyright (c) 2017 - ROLI Ltd.
 
    JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By using JUCE, you agree to the terms of both the JUCE 6 End-User License
-   Agreement and JUCE Privacy Policy (both effective as of the 16th June 2020).
+   By using JUCE, you agree to the terms of both the JUCE 5 End-User License
+   Agreement and JUCE 5 Privacy Policy (both updated and effective as of the
+   27th April 2017).
 
-   End User License Agreement: www.juce.com/juce-6-licence
-   Privacy Policy: www.juce.com/juce-privacy-policy
+   End User License Agreement: www.juce.com/juce-5-licence
+   Privacy Policy: www.juce.com/juce-5-privacy-policy
 
    Or: You may also use this code under the terms of the GPL v3 (see
    www.gnu.org/licenses).
@@ -23,7 +24,7 @@
   ==============================================================================
 */
 
-#include <JuceHeader.h>
+#include "../JuceLibraryCode/JuceHeader.h"
 #include "MainHostWindow.h"
 #include "../Plugins/InternalPlugins.h"
 
@@ -105,7 +106,7 @@ MainHostWindow::MainHostWindow()
     setVisible (true);
 
     InternalPluginFormat internalFormat;
-    internalTypes = internalFormat.getAllTypes();
+    internalFormat.getAllTypes (internalTypes);
 
     if (auto savedPluginList = getAppProperties().getUserSettings()->getXmlValue ("pluginList"))
         knownPluginList.recreateFromXml (*savedPluginList);
@@ -345,7 +346,7 @@ void MainHostWindow::menuItemSelected (int menuItemID, int /*topLevelMenuIndex*/
     }
     else
     {
-        if (KnownPluginList::getIndexChosenByMenu (pluginDescriptions, menuItemID) >= 0)
+        if (knownPluginList.getIndexChosenByMenu (menuItemID) >= 0)
             createPlugin (getChosenType (menuItemID), { proportionOfWidth  (0.3f + Random::getSystemRandom().nextFloat() * 0.6f),
                                                         proportionOfHeight (0.3f + Random::getSystemRandom().nextFloat() * 0.6f) });
     }
@@ -353,8 +354,8 @@ void MainHostWindow::menuItemSelected (int menuItemID, int /*topLevelMenuIndex*/
 
 void MainHostWindow::menuBarActivated (bool isActivated)
 {
-    if (isActivated && graphHolder != nullptr)
-        graphHolder->unfocusKeyboardComponent();
+   /* if (isActivated && graphHolder != nullptr)
+        graphHolder->unfocusKeyboardComponent();*/
 }
 
 void MainHostWindow::createPlugin (const PluginDescription& desc, Point<int> pos)
@@ -370,28 +371,22 @@ void MainHostWindow::addPluginsToMenu (PopupMenu& m)
         int i = 0;
 
         for (auto& t : internalTypes)
-            m.addItem (++i, t.name + " (" + t.pluginFormatName + ")");
+            m.addItem (++i, t.name + " (" + t.pluginFormatName + ")",
+                       graphHolder->graph->getNodeForName (t.name) == nullptr);
     }
 
     m.addSeparator();
 
     pluginDescriptions = knownPluginList.getTypes();
-
-    // This avoids showing the internal types again later on in the list
-    pluginDescriptions.removeIf ([] (PluginDescription& desc)
-    {
-        return desc.pluginFormatName == InternalPluginFormat::getIdentifier();
-    });
-
-    KnownPluginList::addToMenu (m, pluginDescriptions, pluginSortMethod);
+    knownPluginList.addToMenu (m, pluginSortMethod);
 }
 
 PluginDescription MainHostWindow::getChosenType (const int menuID) const
 {
-    if (menuID >= 1 && menuID < (int) (1 + internalTypes.size()))
-        return internalTypes[(size_t) (menuID - 1)];
+    if (menuID >= 1 && menuID < 1 + internalTypes.size())
+        return internalTypes [menuID - 1];
 
-    return pluginDescriptions[KnownPluginList::getIndexChosenByMenu (pluginDescriptions, menuID)];
+    return pluginDescriptions[knownPluginList.getIndexChosenByMenu (menuID)];
 }
 
 //==============================================================================

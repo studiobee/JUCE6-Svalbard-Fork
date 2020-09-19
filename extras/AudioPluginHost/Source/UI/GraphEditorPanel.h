@@ -2,16 +2,17 @@
   ==============================================================================
 
    This file is part of the JUCE library.
-   Copyright (c) 2020 - Raw Material Software Limited
+   Copyright (c) 2017 - ROLI Ltd.
 
    JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By using JUCE, you agree to the terms of both the JUCE 6 End-User License
-   Agreement and JUCE Privacy Policy (both effective as of the 16th June 2020).
+   By using JUCE, you agree to the terms of both the JUCE 5 End-User License
+   Agreement and JUCE 5 Privacy Policy (both updated and effective as of the
+   27th April 2017).
 
-   End User License Agreement: www.juce.com/juce-6-licence
-   Privacy Policy: www.juce.com/juce-privacy-policy
+   End User License Agreement: www.juce.com/juce-5-licence
+   Privacy Policy: www.juce.com/juce-5-privacy-policy
 
    Or: You may also use this code under the terms of the GPL v3 (see
    www.gnu.org/licenses).
@@ -100,7 +101,7 @@ private:
 class GraphDocumentComponent  : public Component,
                                 public DragAndDropTarget,
                                 public DragAndDropContainer,
-                                private ChangeListener
+                                public ChangeListener
 {
 public:
     GraphDocumentComponent (AudioPluginFormatManager& formatManager,
@@ -118,7 +119,7 @@ public:
     std::unique_ptr<PluginGraph> graph;
 
     void resized() override;
-    void unfocusKeyboardComponent();
+    //void unfocusKeyboardComponent();
     void releaseGraph();
 
     //==============================================================================
@@ -127,11 +128,13 @@ public:
 
     //==============================================================================
     std::unique_ptr<GraphEditorPanel> graphPanel;
-    std::unique_ptr<MidiKeyboardComponent> keyboardComp;
+   // std::unique_ptr<MidiKeyboardComponent> keyboardComp;
 
     //==============================================================================
     void showSidePanel (bool isSettingsPanel);
     void hideLastSidePanel();
+    void changeListenerCallback(ChangeBroadcaster* source) override;
+
 
     BurgerMenuComponent burgerMenu;
 
@@ -142,7 +145,8 @@ private:
 
     AudioProcessorPlayer graphPlayer;
     MidiKeyboardState keyState;
-    MidiOutput* midiOutput = nullptr;
+    MidiOutput *midiOut;
+
 
     struct TooltipBar;
     std::unique_ptr<TooltipBar> statusBar;
@@ -161,11 +165,8 @@ private:
     SidePanel* lastOpenedSidePanel = nullptr;
 
     //==============================================================================
-    void changeListenerCallback (ChangeBroadcaster*) override;
-
     void init();
     void checkAvailableWidth();
-    void updateMidiOutput();
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GraphDocumentComponent)

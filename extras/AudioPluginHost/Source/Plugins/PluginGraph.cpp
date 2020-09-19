@@ -2,16 +2,17 @@
   ==============================================================================
 
    This file is part of the JUCE library.
-   Copyright (c) 2020 - Raw Material Software Limited
+   Copyright (c) 2017 - ROLI Ltd.
 
    JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By using JUCE, you agree to the terms of both the JUCE 6 End-User License
-   Agreement and JUCE Privacy Policy (both effective as of the 16th June 2020).
+   By using JUCE, you agree to the terms of both the JUCE 5 End-User License
+   Agreement and JUCE 5 Privacy Policy (both updated and effective as of the
+   27th April 2017).
 
-   End User License Agreement: www.juce.com/juce-6-licence
-   Privacy Policy: www.juce.com/juce-privacy-policy
+   End User License Agreement: www.juce.com/juce-5-licence
+   Privacy Policy: www.juce.com/juce-5-privacy-policy
 
    Or: You may also use this code under the terms of the GPL v3 (see
    www.gnu.org/licenses).
@@ -23,7 +24,7 @@
   ==============================================================================
 */
 
-#include <JuceHeader.h>
+#include "../JuceLibraryCode/JuceHeader.h"
 #include "../UI/MainHostWindow.h"
 #include "PluginGraph.h"
 #include "InternalPlugins.h"
@@ -39,6 +40,18 @@ PluginGraph::PluginGraph (AudioPluginFormatManager& fm)
       formatManager (fm)
 {
     newDocument();
+    //LOGGER
+    DBG("fileLogger folder: " << FileLogger::getSystemLogFileFolder().getFullPathName());
+
+    initialiseLogger("Svalbard_Mccc_Log_");
+    Logger::writeToLog(logger->getSystemLogFileFolder().getFullPathName());
+    Logger::writeToLog(SystemStats::getOperatingSystemName());
+    Logger::writeToLog("CPU: " + String(SystemStats::getCpuSpeedInMegahertz())
+       + "MHz  Cores: " + String(SystemStats::getNumCpus())
+       + "  " + String(SystemStats::getMemorySizeInMegabytes()) + "MB");
+
+
+
     graph.addListener (this);
 }
 
@@ -47,6 +60,8 @@ PluginGraph::~PluginGraph()
     graph.removeListener (this);
     graph.removeChangeListener (this);
     graph.clear();
+    Logger::writeToLog("Closed properly");
+    deleteLogger();
 }
 
 PluginGraph::NodeID PluginGraph::getNextUID() noexcept
@@ -81,7 +96,7 @@ void PluginGraph::addPlugin (const PluginDescription& desc, Point<double> pos)
                                              graph.getBlockSize(),
                                              [this, pos] (std::unique_ptr<AudioPluginInstance> instance, const String& error)
                                              {
-                                                 addPluginCallback (std::move (instance), error, pos);
+                                               addPluginCallback (std::move (instance), error, pos);
                                              });
 }
 
@@ -118,9 +133,8 @@ void PluginGraph::setNodePosition (NodeID nodeID, Point<double> pos)
 
 Point<double> PluginGraph::getNodePosition (NodeID nodeID) const
 {
-    if (auto* n = graph.getNodeForId (nodeID))
-        return { static_cast<double> (n->properties ["x"]),
-                 static_cast<double> (n->properties ["y"]) };
+    if (auto* n = graph.getNodeForId(nodeID))
+        return { static_cast<double> (n->properties["x"]), static_cast<double> (n->properties["y"]) };
 
     return {};
 }
@@ -133,6 +147,34 @@ void PluginGraph::clear()
     changed();
 }
 
+bool PluginGraph::windowPositionFitsOnScreen(PluginWindow* w)
+{
+    auto nodePosition = w->getScreenPosition();
+    auto displays = Desktop::getInstance().getDisplays().getRectangleList(false);
+    bool nodePositionFitsOnScreen = false;
+    for (auto display : displays)
+        if (display.contains(nodePosition))
+            nodePositionFitsOnScreen = true;
+ 
+    return nodePositionFitsOnScreen;
+}
+
+void PluginGraph::fitWindowOnScreen(PluginWindow* w)
+{
+    int oldX = w->getX();
+    int newX = 0;
+    auto mainDisplayTopLeft = Desktop::getInstance().getDisplays().getMainDisplay().topLeftPhysical;
+    int mainDisplayWidth = Desktop::getInstance().getDisplays().getMainDisplay().totalArea.getWidth();
+    if (oldX < 0)
+        newX = mainDisplayWidth - mainDisplayTopLeft.getX() + oldX;
+    if (oldX > 0)
+        newX = oldX - mainDisplayWidth - mainDisplayTopLeft.getX();
+    w->setTopLeftPosition(newX, w->getY());
+
+    if (!windowPositionFitsOnScreen(w))
+        w->setTopLeftPosition(mainDisplayTopLeft);
+}
+
 PluginWindow* PluginGraph::getOrCreateWindowFor (AudioProcessorGraph::Node* node, PluginWindow::Type type)
 {
     jassert (node != nullptr);
@@ -142,7 +184,11 @@ PluginWindow* PluginGraph::getOrCreateWindowFor (AudioProcessorGraph::Node* node
    #else
     for (auto* w : activePluginWindows)
         if (w->node.get() == node && w->type == type)
+        {
+            if (!windowPositionFitsOnScreen(w))
+                fitWindowOnScreen(w);
             return w;
+        }
    #endif
 
     if (auto* processor = node->getProcessor())
@@ -151,7 +197,7 @@ PluginWindow* PluginGraph::getOrCreateWindowFor (AudioProcessorGraph::Node* node
         {
             auto description = plugin->getPluginDescription();
 
-            if (! plugin->hasEditor() && description.pluginFormatName == "Internal")
+            if (description.pluginFormatName == "Internal")
             {
                 getCommandManager().invokeDirectly (CommandIDs::showAudioSettings, false);
                 return nullptr;
@@ -198,18 +244,15 @@ void PluginGraph::newDocument()
 
     InternalPluginFormat internalFormat;
 
-    jassert (internalFormat.getAllTypes().size() > 3);
+    addPlugin (internalFormat.audioInDesc,  { 0.5,  0.1 });
+    addPlugin (internalFormat.midiInDesc,   { 0.25, 0.1 });
+    addPlugin (internalFormat.audioOutDesc, { 0.5,  0.9 });
+    addPlugin (internalFormat.midiOutDesc, { 0.25f, 0.9f });
 
-    addPlugin (internalFormat.getAllTypes()[0], { 0.5,  0.1 });
-    addPlugin (internalFormat.getAllTypes()[1], { 0.25, 0.1 });
-    addPlugin (internalFormat.getAllTypes()[2], { 0.5,  0.9 });
-    addPlugin (internalFormat.getAllTypes()[3], { 0.25, 0.9 });
-
-    MessageManager::callAsync ([this]
-    {
+    MessageManager::callAsync ([this] () {
         setChangedFlag (false);
         graph.addChangeListener (this);
-    });
+    } );
 }
 
 Result PluginGraph::loadDocument (const File& file)
@@ -328,13 +371,12 @@ static XmlElement* createNodeXml (AudioProcessorGraph::Node* const node) noexcep
     if (auto* plugin = dynamic_cast<AudioPluginInstance*> (node->getProcessor()))
     {
         auto e = new XmlElement ("FILTER");
-
-        e->setAttribute ("uid",      (int) node->nodeID.uid);
-        e->setAttribute ("x",        node->properties ["x"].toString());
-        e->setAttribute ("y",        node->properties ["y"].toString());
-       #if JUCE_WINDOWS && JUCE_WIN_PER_MONITOR_DPI_AWARE
-        e->setAttribute ("DPIAware", node->properties["DPIAware"].toString());
-       #endif
+        e->setAttribute ("uid", (int) node->nodeID.uid);
+        e->setAttribute ("x", node->properties ["x"].toString());
+        e->setAttribute ("y", node->properties ["y"].toString());
+        #if JUCE_WINDOWS && JUCE_WIN_PER_MONITOR_DPI_AWARE
+            e->setAttribute("DPIAware", node->properties["DPIAware"].toString());
+        #endif
 
         for (int i = 0; i < (int) PluginWindow::Type::numTypes; ++i)
         {
@@ -408,11 +450,11 @@ void PluginGraph::createNodeFromXml (const XmlElement& xml)
                 node->getProcessor()->setStateInformation (m.getData(), (int) m.getSize());
             }
 
-            node->properties.set ("x",        xml.getDoubleAttribute ("x"));
-            node->properties.set ("y",        xml.getDoubleAttribute ("y"));
-           #if JUCE_WINDOWS && JUCE_WIN_PER_MONITOR_DPI_AWARE
-            node->properties.set ("DPIAware", xml.getDoubleAttribute ("DPIAware"));
-           #endif
+            node->properties.set ("x", xml.getDoubleAttribute ("x"));
+            node->properties.set ("y", xml.getDoubleAttribute ("y"));
+            #if JUCE_WINDOWS && JUCE_WIN_PER_MONITOR_DPI_AWARE
+                node->properties.set("DPIAware", xml.getDoubleAttribute("DPIAware"));
+            #endif
 
             for (int i = 0; i < (int) PluginWindow::Type::numTypes; ++i)
             {

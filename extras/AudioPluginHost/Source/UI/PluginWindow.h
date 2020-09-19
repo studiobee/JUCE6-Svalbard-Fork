@@ -2,16 +2,17 @@
   ==============================================================================
 
    This file is part of the JUCE library.
-   Copyright (c) 2020 - Raw Material Software Limited
+   Copyright (c) 2017 - ROLI Ltd.
 
    JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By using JUCE, you agree to the terms of both the JUCE 6 End-User License
-   Agreement and JUCE Privacy Policy (both effective as of the 16th June 2020).
+   By using JUCE, you agree to the terms of both the JUCE 5 End-User License
+   Agreement and JUCE 5 Privacy Policy (both updated and effective as of the
+   27th April 2017).
 
-   End User License Agreement: www.juce.com/juce-6-licence
-   Privacy Policy: www.juce.com/juce-privacy-policy
+   End User License Agreement: www.juce.com/juce-5-licence
+   Privacy Policy: www.juce.com/juce-5-privacy-policy
 
    Or: You may also use this code under the terms of the GPL v3 (see
    www.gnu.org/licenses).
@@ -30,7 +31,7 @@
 class PluginGraph;
 
 /**
-    A window that shows a log of parameter change messages sent by the plugin.
+    A window that shows a log of parameter change messagse sent by the plugin.
 */
 class PluginDebugWindow : public AudioProcessorEditor,
                           public AudioProcessorParameter::Listener,
@@ -110,8 +111,8 @@ private:
         list.scrollToEnsureRowIsOnscreen (log.size() - 1);
     }
 
-    constexpr static const int maxLogSize = 300;
-    constexpr static const int logSizeTrimThreshold = 400;
+    JUCE_CONSTEXPR static const int maxLogSize = 300;
+    JUCE_CONSTEXPR static const int logSizeTrimThreshold = 400;
 
     ListBox list { "Log", this };
 
@@ -160,6 +161,7 @@ public:
 
         setTopLeftPosition (20, 20);
        #else
+
         setTopLeftPosition (node->properties.getWithDefault (getLastXProp (type), Random::getSystemRandom().nextInt (500)),
                             node->properties.getWithDefault (getLastYProp (type), Random::getSystemRandom().nextInt (500)));
        #endif
@@ -186,7 +188,9 @@ public:
         activeWindowList.removeObject (this);
     }
 
-    static String getLastXProp (Type type)    { return "uiLastX_" + getTypeName (type); }
+    static String getLastXProp (Type type)    { 
+        return "uiLastX_" + getTypeName (type);
+    }
     static String getLastYProp (Type type)    { return "uiLastY_" + getTypeName (type); }
     static String getOpenProp  (Type type)    { return "uiopen_"  + getTypeName (type); }
 
@@ -226,7 +230,6 @@ private:
             case Type::programs:   return "Programs";
             case Type::audioIO:    return "IO";
             case Type::debug:      return "Debug";
-            case Type::numTypes:
             default:               return {};
         }
     }
