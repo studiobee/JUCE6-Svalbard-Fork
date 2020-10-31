@@ -94,6 +94,11 @@ XmlElement::XmlElement (StringRef tag)
 XmlElement::XmlElement (const Identifier& tag)
     : tagName (tag.toString())
 {
+    if (!isValidXmlName(tagName))
+    {
+            DBG("tagName " << tagName);
+    }
+
     jassert (isValidXmlName (tagName));
 }
 

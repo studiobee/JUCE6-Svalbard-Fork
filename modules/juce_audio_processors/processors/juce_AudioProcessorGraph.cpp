@@ -961,6 +961,8 @@ void AudioProcessorGraph::Node::prepare (double newSampleRate, int newBlockSize,
             //processor->setPlayConfigDetails(graph->getMainBusNumInputChannels(), graph->getMainBusNumOutputChannels(), graph->getSampleRate(), graph->getBlockSize() );
             processor->setChannelLayoutOfBus(true, 0, AudioChannelSet::canonicalChannelSet(graph->getMainBusNumInputChannels()));
             int numOuts = processor->getName() == "XO" ? graph->getMainBusNumOutputChannels() * 2 : graph->getMainBusNumOutputChannels();
+            //if (processor->getName() == "MonoMaker")
+            //    numOuts = 1;
             processor->setChannelLayoutOfBus(false, 0, AudioChannelSet::canonicalChannelSet(numOuts));
         }
 
