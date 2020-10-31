@@ -1481,7 +1481,7 @@ AudioProcessorGraph::Node* AudioProcessorGraph::getAudioOutputNode()
         if (node->getProcessor()->getName() == "Audio Output")
             return node;
 
-    return nullptr;
+    return nullptr; audioOutputNode
 }
 
 AudioProcessorGraph::Node* AudioProcessorGraph::getDummyNode()
